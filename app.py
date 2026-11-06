@@ -166,7 +166,7 @@ def movement_form(students: list[dict]) -> None:
         return
     student_options = {f'{s["full_name"]} · {s["access_code"]}': s["id"] for s in students}
     student_label = st.selectbox("Alumno", student_options, key="movement_student")
-    concepts = db.list_concepts_for_student(student_options[student_label])
+    concepts = db.list_open_concepts_for_student(student_options[student_label])
     if not concepts:
         st.warning("El alumno no tiene conceptos disponibles.")
         return
