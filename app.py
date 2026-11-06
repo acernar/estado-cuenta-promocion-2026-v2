@@ -110,7 +110,16 @@ def consultation() -> None:
     b.metric("Pagos aplicados", money(statement["summary"]["total_applied"]))
     c.metric("Reembolsos", money(statement["summary"]["total_refunds"]))
     d, e = st.columns(2)
-    d.metric("Otros egresos", money(statement["summary"]["total_outflows"]))
+    total_outflows = float(statement["summary"]["total_outflows"])
+    if total_outflows > 0:
+        d.markdown(
+            '<p style="margin:0 0 0.25rem;font-size:0.875rem;">Otros egresos</p>'
+            f'<p style="margin:0;color:#d62828;font-size:2.25rem;line-height:1.2;">'
+            f'{money(total_outflows)}</p>',
+            unsafe_allow_html=True,
+        )
+    else:
+        d.metric("Otros egresos", money(total_outflows))
     available_funds = float(statement["summary"]["available_funds"])
     if available_funds < 0:
         e.markdown(
