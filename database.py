@@ -66,6 +66,27 @@ def create_concept(data: dict[str, Any]) -> None:
     get_client().table("concepts").insert(data).execute()
 
 
+def assigned_student_ids(concept_id: str) -> list[str]:
+    rows = (
+        get_client().table("student_concepts").select("student_id")
+        .eq("concept_id", concept_id).eq("active", True).execute().data
+    )
+    return [row["student_id"] for row in rows]
+
+
+def save_participants(concept_id: str, student_ids: list[str]) -> None:
+    client = get_client()
+    client.table("student_concepts").update({"active": False}).eq(
+        "concept_id", concept_id
+    ).execute()
+    if student_ids:
+        client.table("student_concepts").upsert(
+            [{"concept_id": concept_id, "student_id": student_id, "active": True}
+             for student_id in student_ids],
+            on_conflict="student_id,concept_id",
+        ).execute()
+
+
 def create_movement(data: dict[str, Any]) -> None:
     get_client().table("movements").insert(data).execute()
 

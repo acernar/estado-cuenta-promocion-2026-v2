@@ -34,6 +34,17 @@ create table public.concepts (
   unique (name, category)
 );
 
+-- Define quién participa en cada compromiso. No estar asignado significa
+-- que el alumno no tiene esa obligación, aunque el concepto exista.
+create table public.student_concepts (
+  student_id uuid not null references public.students(id) on delete cascade,
+  concept_id uuid not null references public.concepts(id) on delete cascade,
+  target_amount numeric(12,2) check (target_amount is null or target_amount >= 0),
+  active boolean not null default true,
+  created_at timestamptz not null default now(),
+  primary key (student_id, concept_id)
+);
+
 create table public.movements (
   id uuid primary key default gen_random_uuid(),
   student_id uuid not null references public.students(id),
@@ -102,13 +113,15 @@ begin
     ),
     'commitments', coalesce((
       select jsonb_agg(x order by x.name) from (
-        select c.name, c.target_amount,
+        select c.name, coalesce(sc.target_amount, c.target_amount) as target_amount,
                coalesce(sum(m.amount) filter (where m.status = 'activo' and m.movement_type = 'aplicacion'), 0) as paid_amount,
-               greatest(c.target_amount - coalesce(sum(m.amount) filter (where m.status = 'activo' and m.movement_type = 'aplicacion'), 0), 0) as pending_amount
+               greatest(coalesce(sc.target_amount, c.target_amount) - coalesce(sum(m.amount) filter (where m.status = 'activo' and m.movement_type = 'aplicacion'), 0), 0) as pending_amount
         from public.concepts c
+        join public.student_concepts sc on sc.concept_id = c.id
+          and sc.student_id = v_student.id and sc.active
         left join public.movements m on m.concept_id = c.id and m.student_id = v_student.id
         where c.category = 'compromiso' and c.active
-        group by c.id, c.name, c.target_amount
+        group by c.id, c.name, c.target_amount, sc.target_amount
       ) x
     ), '[]'::jsonb),
     'movements', coalesce((
@@ -122,6 +135,24 @@ begin
   );
 end;
 $$;
+
+create or replace function public.validate_movement_participation()
+returns trigger language plpgsql set search_path = public
+as $$
+begin
+  if new.movement_type = 'aplicacion' and not exists (
+    select 1 from public.student_concepts sc
+    where sc.student_id = new.student_id and sc.concept_id = new.concept_id and sc.active
+  ) then
+    raise exception 'El alumno no participa en este compromiso';
+  end if;
+  return new;
+end;
+$$;
+
+create trigger movement_participation_check
+before insert or update of student_id, concept_id, movement_type on public.movements
+for each row execute function public.validate_movement_participation();
 
 create or replace function public.void_movement(p_movement_id uuid, p_reason text)
 returns void language plpgsql security definer set search_path = public
@@ -139,11 +170,13 @@ $$;
 alter table public.profiles enable row level security;
 alter table public.students enable row level security;
 alter table public.concepts enable row level security;
+alter table public.student_concepts enable row level security;
 alter table public.movements enable row level security;
 
 create policy profiles_admin_read on public.profiles for select using (public.is_admin());
 create policy students_admin_all on public.students for all using (public.is_admin()) with check (public.is_admin());
 create policy concepts_admin_all on public.concepts for all using (public.is_admin()) with check (public.is_admin());
+create policy student_concepts_admin_all on public.student_concepts for all using (public.is_admin()) with check (public.is_admin());
 create policy movements_admin_read on public.movements for select using (public.is_admin());
 create policy movements_admin_insert on public.movements for insert with check (public.is_admin() and created_by = auth.uid());
 

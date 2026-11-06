@@ -135,6 +135,30 @@ def concept_form() -> None:
         st.rerun()
 
 
+def participation_form(students: list[dict], concepts: list[dict]) -> None:
+    st.subheader("Participantes por compromiso")
+    commitments = [c for c in concepts if c["category"] == "compromiso"]
+    if not commitments:
+        st.info("Aún no hay compromisos creados.")
+        return
+    concept_by_label = {c["name"]: c for c in commitments}
+    selected_label = st.selectbox("Compromiso", concept_by_label, key="participant_concept")
+    selected = concept_by_label[selected_label]
+    current = set(db.assigned_student_ids(selected["id"]))
+    student_by_label = {f'{s["full_name"]} · {s["access_code"]}': s["id"] for s in students}
+    defaults = [label for label, student_id in student_by_label.items() if student_id in current]
+    with st.form("participants"):
+        chosen = st.multiselect(
+            "Alumnos que sí participan", student_by_label, default=defaults,
+            help="Quienes no estén seleccionados no tendrán deuda por este compromiso.",
+        )
+        submitted = st.form_submit_button("Guardar participantes", type="primary")
+    if submitted:
+        db.save_participants(selected["id"], [student_by_label[label] for label in chosen])
+        st.success("Participación actualizada.")
+        st.rerun()
+
+
 def admin() -> None:
     header()
     left, right = st.columns([5, 1])
@@ -146,7 +170,9 @@ def admin() -> None:
 
     students = db.list_students()
     concepts = db.list_concepts()
-    tab1, tab2, tab3, tab4 = st.tabs(["Registrar", "Movimientos", "Conceptos", "Descargar"])
+    tab1, tab2, tab3, tab4, tab5 = st.tabs(
+        ["Registrar", "Movimientos", "Conceptos", "Participantes", "Descargar"]
+    )
     with tab1:
         movement_form(students, concepts)
     with tab2:
@@ -160,6 +186,8 @@ def admin() -> None:
         concept_form()
         st.dataframe(pd.DataFrame(db.list_concepts(False)), hide_index=True, use_container_width=True)
     with tab4:
+        participation_form(students, concepts)
+    with tab5:
         st.download_button(
             "Descargar respaldo completo en Excel", db.export_excel(),
             file_name=f"estado_cuenta_2026_{date.today().isoformat()}.xlsx",

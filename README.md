@@ -35,6 +35,7 @@ Las claves privadas nunca deben guardarse en GitHub.
 
 - `students`: un registro por alumno.
 - `concepts`: un registro por ahorro, actividad, compromiso o reembolso.
+- `student_concepts`: indica quiénes participan en cada compromiso; quien no está asignado no genera deuda.
 - `movements`: un registro por operación.
 - `profiles`: administradores autorizados.
 
