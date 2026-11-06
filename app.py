@@ -170,10 +170,23 @@ def movement_form(students: list[dict]) -> None:
     if not concepts:
         st.warning("El alumno no tiene conceptos disponibles.")
         return
-    concept_options = {f'{c["name"]} · {c["category"]}': c for c in concepts}
+    totals = db.concept_totals(student_options[student_label])
+    concept_options = {
+        f'{c["name"]} · registrado {money(totals.get(c["id"], 0))}': c
+        for c in concepts
+    }
+    concept_label = st.selectbox("Concepto", concept_options, key="movement_concept")
+    selected_concept = concept_options[concept_label]
+    registered = totals.get(selected_concept["id"], 0.0)
+    if selected_concept["category"] == "compromiso":
+        target = db.commitment_target(student_options[student_label], selected_concept)
+        st.info(
+            f"Ya registrado: {money(registered)} · Costo: {money(target)} · "
+            f"Pendiente: {money(max(target - registered, 0))}"
+        )
+    else:
+        st.info(f"Ya registrado en este concepto: {money(registered)}")
     with st.form("movement", clear_on_submit=True):
-        concept_label = st.selectbox("Concepto", concept_options)
-        selected_concept = concept_options[concept_label]
         expected_type = {
             "ahorro": "ingreso", "actividad": "ingreso",
             "compromiso": "aplicacion", "reembolso": "reembolso", "egreso": "egreso"

@@ -59,7 +59,9 @@ def list_concepts(active_only: bool = True) -> list[dict[str, Any]]:
     query = get_client().table("concepts").select("*")
     if active_only:
         query = query.eq("active", True)
-    return query.order("category").order("name").execute().data
+    rows = query.order("name").execute().data
+    priority = {"compromiso": 0, "actividad": 1, "ahorro": 2, "reembolso": 3, "egreso": 4}
+    return sorted(rows, key=lambda row: (priority.get(row["category"], 9), row["name"]))
 
 
 def list_concepts_for_student(student_id: str) -> list[dict[str, Any]]:
@@ -71,6 +73,28 @@ def list_concepts_for_student(student_id: str) -> list[dict[str, Any]]:
     )
     assigned.update(row["concept_id"] for row in rows)
     return [c for c in concepts if c["category"] != "compromiso" or c["id"] in assigned]
+
+
+def concept_totals(student_id: str) -> dict[str, float]:
+    rows = (
+        get_client().table("movements").select("concept_id,amount")
+        .eq("student_id", student_id).eq("status", "activo").execute().data
+    )
+    totals: dict[str, float] = {}
+    for row in rows:
+        totals[row["concept_id"]] = totals.get(row["concept_id"], 0.0) + float(row["amount"])
+    return totals
+
+
+def commitment_target(student_id: str, concept: dict[str, Any]) -> float:
+    rows = (
+        get_client().table("student_concepts").select("target_amount")
+        .eq("student_id", student_id).eq("concept_id", concept["id"])
+        .eq("active", True).limit(1).execute().data
+    )
+    if rows and rows[0]["target_amount"] is not None:
+        return float(rows[0]["target_amount"])
+    return float(concept.get("target_amount") or 0)
 
 
 def save_student(data: dict[str, Any]) -> None:
