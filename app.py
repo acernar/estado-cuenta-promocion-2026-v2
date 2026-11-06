@@ -111,7 +111,16 @@ def consultation() -> None:
     c.metric("Reembolsos", money(statement["summary"]["total_refunds"]))
     d, e = st.columns(2)
     d.metric("Otros egresos", money(statement["summary"]["total_outflows"]))
-    e.metric("Fondos disponibles", money(statement["summary"]["available_funds"]))
+    available_funds = float(statement["summary"]["available_funds"])
+    if available_funds < 0:
+        e.markdown(
+            '<p style="margin:0 0 0.25rem;font-size:0.875rem;">Fondos disponibles</p>'
+            f'<p style="margin:0;color:#d62828;font-size:2.25rem;line-height:1.2;">'
+            f'{money(available_funds)}</p>',
+            unsafe_allow_html=True,
+        )
+    else:
+        e.metric("Fondos disponibles", money(available_funds))
 
     st.subheader("Compromisos")
     commitments = pd.DataFrame(statement["commitments"])
