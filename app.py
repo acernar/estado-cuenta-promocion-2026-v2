@@ -5,6 +5,7 @@ from decimal import Decimal
 
 import pandas as pd
 import streamlit as st
+import streamlit.components.v1 as components
 
 import database as db
 
@@ -19,6 +20,74 @@ def money(value: object) -> str:
 def header() -> None:
     st.title("GAUDIUM VITAE")
     st.caption("Sistema de Estado de Cuenta · Promoción 2026 – Sor Querubina")
+
+
+def password_recovery() -> None:
+    """La contraseña y el token viajan directo del navegador a Supabase."""
+    header()
+    st.subheader("Crear nueva contraseña")
+    st.caption("La contraseña no se guarda en esta aplicación.")
+    components.html(
+        f"""
+        <style>
+          body {{ font-family: Arial, sans-serif; color: #f2f2f2; background: transparent; }}
+          label {{ display:block; margin:14px 0 6px; }}
+          input {{ width:100%; box-sizing:border-box; padding:12px; border-radius:8px;
+                   border:1px solid #666; background:#262626; color:white; }}
+          button {{ margin-top:18px; padding:12px 18px; border:0; border-radius:8px;
+                    background:#b55b58; color:white; font-weight:bold; cursor:pointer; }}
+          #message {{ margin-top:16px; line-height:1.4; }}
+        </style>
+        <label>Nueva contraseña</label>
+        <input id="password" type="password" minlength="8" autocomplete="new-password">
+        <label>Repetir contraseña</label>
+        <input id="confirm" type="password" minlength="8" autocomplete="new-password">
+        <button onclick="updatePassword()">Guardar contraseña</button>
+        <div id="message"></div>
+        <script>
+          async function updatePassword() {{
+            const message = document.getElementById('message');
+            const password = document.getElementById('password').value;
+            const confirm = document.getElementById('confirm').value;
+            const params = new URLSearchParams(window.parent.location.hash.substring(1));
+            const token = params.get('access_token');
+            const type = params.get('type');
+            if (!token || type !== 'recovery') {{
+              message.textContent = 'El enlace no es válido o ya venció. Solicita uno nuevo.';
+              return;
+            }}
+            if (password.length < 8) {{
+              message.textContent = 'La contraseña debe tener al menos 8 caracteres.';
+              return;
+            }}
+            if (password !== confirm) {{
+              message.textContent = 'Las contraseñas no coinciden.';
+              return;
+            }}
+            message.textContent = 'Guardando...';
+            const response = await fetch('{st.secrets["SUPABASE_URL"]}/auth/v1/user', {{
+              method: 'PUT',
+              headers: {{
+                'apikey': '{st.secrets["SUPABASE_ANON_KEY"]}',
+                'Authorization': 'Bearer ' + token,
+                'Content-Type': 'application/json'
+              }},
+              body: JSON.stringify({{password}})
+            }});
+            if (response.ok) {{
+              window.parent.history.replaceState(null, '', '/');
+              message.innerHTML = '<b>Contraseña actualizada.</b><br>Ya puedes entrar al área de Administración.';
+              document.getElementById('password').value = '';
+              document.getElementById('confirm').value = '';
+            }} else {{
+              const result = await response.json();
+              message.textContent = result.message || 'No se pudo actualizar. Solicita un enlace nuevo.';
+            }}
+          }}
+        </script>
+        """,
+        height=370,
+    )
 
 
 def consultation() -> None:
@@ -259,6 +328,10 @@ def admin() -> None:
 
 if not db.configured():
     st.error("Falta conectar la nueva base de datos. Copie secrets.toml.example como secrets.toml y agregue las credenciales de Supabase.")
+    st.stop()
+
+if st.query_params.get("recovery") == "1":
+    password_recovery()
     st.stop()
 
 area = st.sidebar.radio("Área", ["Consulta familiar", "Administración"])
