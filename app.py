@@ -136,7 +136,15 @@ def consultation() -> None:
         if movements.empty:
             st.info("No hay movimientos registrados.")
         else:
-            st.dataframe(movements, hide_index=True, use_container_width=True)
+            movements = movements[["Concepto", "Monto"]]
+            st.dataframe(
+                movements,
+                hide_index=True,
+                use_container_width=True,
+                column_config={
+                    "Monto": st.column_config.NumberColumn(format="S/ %.2f"),
+                },
+            )
 
 
 def login() -> None:
