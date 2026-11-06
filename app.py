@@ -255,15 +255,22 @@ def student_form() -> None:
         st.rerun()
 
 
-def void_form(movements: list[dict]) -> None:
-    active = [m for m in movements if m["status"] == "activo"]
-    if not active:
-        return
-    labels = {
-        f'{m["movement_date"]} · {m["student"]} · {m["concept"]} · {money(m["amount"])} · {m["id"][:8]}': m["id"]
-        for m in active
+def void_form(students: list[dict]) -> None:
+    student_labels = {
+        f'{student["full_name"]} · {student["access_code"]}': student["id"]
+        for student in students
     }
     with st.expander("Anular un movimiento"):
+        selected_student = st.selectbox("Alumno", student_labels, key="void_student")
+        movements = db.list_movements(student_labels[selected_student])
+        active = [movement for movement in movements if movement["status"] == "activo"]
+        if not active:
+            st.info("Este alumno no tiene movimientos activos para anular.")
+            return
+        labels = {
+            f'{m["movement_date"]} · {m["concept"]} · {money(m["amount"])} · {m["id"][:8]}': m["id"]
+            for m in active
+        }
         with st.form("void"):
             selected = st.selectbox("Movimiento", labels)
             reason = st.text_input("Motivo de la anulación")
@@ -347,7 +354,7 @@ def admin() -> None:
             st.info("No hay movimientos registrados.")
         else:
             st.dataframe(movements, hide_index=True, use_container_width=True)
-            void_form(movement_rows)
+        void_form(students)
         st.caption("Las correcciones se harán por anulación; nunca se borrará el historial.")
     with tab3:
         student_form()
