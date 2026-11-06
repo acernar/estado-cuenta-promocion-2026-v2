@@ -122,8 +122,13 @@ def consultation() -> None:
             "name": "Concepto", "target_amount": "Costo",
             "paid_amount": "Abonado", "pending_amount": "Pendiente"
         })
+        commitments = commitments[["Concepto", "Costo", "Abonado", "Pendiente"]]
+        styled_commitments = commitments.style.applymap(
+            lambda value: "color: #d62828; font-weight: 700;" if float(value) > 0 else "",
+            subset=["Pendiente"],
+        )
         st.dataframe(
-            commitments, hide_index=True, use_container_width=True,
+            styled_commitments, hide_index=True, use_container_width=True,
             column_config={
                 "Costo": st.column_config.NumberColumn(format="S/ %.2f"),
                 "Abonado": st.column_config.NumberColumn(format="S/ %.2f"),
