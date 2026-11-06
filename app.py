@@ -36,10 +36,11 @@ def consultation() -> None:
         return
 
     st.subheader(statement["student"]["full_name"])
-    a, b, c, d, e = st.columns(5)
+    a, b, c = st.columns(3)
     a.metric("Fondos acumulados", money(statement["summary"]["total_income"]))
     b.metric("Pagos aplicados", money(statement["summary"]["total_applied"]))
     c.metric("Reembolsos", money(statement["summary"]["total_refunds"]))
+    d, e = st.columns(2)
     d.metric("Otros egresos", money(statement["summary"]["total_outflows"]))
     e.metric("Fondos disponibles", money(statement["summary"]["available_funds"]))
 
@@ -52,7 +53,14 @@ def consultation() -> None:
             "name": "Concepto", "target_amount": "Costo",
             "paid_amount": "Abonado", "pending_amount": "Pendiente"
         })
-        st.dataframe(commitments, hide_index=True, use_container_width=True)
+        st.dataframe(
+            commitments, hide_index=True, use_container_width=True,
+            column_config={
+                "Costo": st.column_config.NumberColumn(format="S/ %.2f"),
+                "Abonado": st.column_config.NumberColumn(format="S/ %.2f"),
+                "Pendiente": st.column_config.NumberColumn(format="S/ %.2f"),
+            },
+        )
 
     with st.expander("Ver movimientos"):
         movements = pd.DataFrame(statement["movements"])
