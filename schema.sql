@@ -186,3 +186,15 @@ create policy movements_admin_insert on public.movements for insert with check (
 grant execute on function public.get_student_statement(text) to anon, authenticated;
 grant execute on function public.void_movement(uuid, text) to authenticated;
 
+-- La API de datos no expone tablas automáticamente. Estos permisos habilitan
+-- solo las operaciones usadas por la aplicación; las políticas RLS siguen
+-- determinando qué administrador puede realizarlas.
+grant usage on schema public to anon, authenticated, service_role;
+grant select on public.profiles, public.students, public.concepts,
+  public.student_concepts, public.movements, public.movement_detail to authenticated;
+grant insert, update on public.students, public.concepts,
+  public.student_concepts, public.movements to authenticated;
+grant select, insert, update on public.profiles, public.students, public.concepts,
+  public.student_concepts, public.movements to service_role;
+grant select on public.movement_detail to service_role;
+
