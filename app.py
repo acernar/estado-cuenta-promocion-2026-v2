@@ -123,7 +123,7 @@ def consultation() -> None:
             "paid_amount": "Abonado", "pending_amount": "Pendiente"
         })
         commitments = commitments[["Concepto", "Costo", "Abonado", "Pendiente"]]
-        styled_commitments = commitments.style.applymap(
+        styled_commitments = commitments.style.map(
             lambda value: "color: #d62828; font-weight: 700;" if float(value) > 0 else "",
             subset=["Pendiente"],
         )
