@@ -3,4 +3,5 @@
 __pycache__/
 *.pyc
 *.xlsx
+migration_preview.json
 

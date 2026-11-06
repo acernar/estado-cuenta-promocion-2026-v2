@@ -41,3 +41,20 @@ Las claves privadas nunca deben guardarse en GitHub.
 
 Los totales y saldos se calculan desde los movimientos; no se almacenan en columnas repetidas.
 
+## Migración del Excel
+
+El análisis no modifica el archivo y tampoco escribe en Supabase:
+
+```bash
+python migrate_excel.py "/ruta/al/control.xlsx"
+```
+
+Reglas importantes:
+
+- Cuota vacía: el alumno no participa y no genera deuda.
+- Cuota con cero: participa, pero todavía no tiene monto aplicado.
+- Cuota con monto: participa y se importa el monto aplicado.
+- Totales y columnas auxiliares no se importan.
+- Los valores negativos de actividades se conservan como egresos identificados.
+- La migración se detiene si el saldo reconstruido no coincide con la columna `BJ`.
+

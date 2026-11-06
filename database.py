@@ -62,6 +62,21 @@ def list_concepts(active_only: bool = True) -> list[dict[str, Any]]:
     return query.order("category").order("name").execute().data
 
 
+def list_concepts_for_student(student_id: str) -> list[dict[str, Any]]:
+    concepts = list_concepts()
+    assigned = set()
+    rows = (
+        get_client().table("student_concepts").select("concept_id")
+        .eq("student_id", student_id).eq("active", True).execute().data
+    )
+    assigned.update(row["concept_id"] for row in rows)
+    return [c for c in concepts if c["category"] != "compromiso" or c["id"] in assigned]
+
+
+def save_student(data: dict[str, Any]) -> None:
+    get_client().table("students").upsert(data, on_conflict="access_code").execute()
+
+
 def create_concept(data: dict[str, Any]) -> None:
     get_client().table("concepts").insert(data).execute()
 

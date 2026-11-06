@@ -36,11 +36,12 @@ def consultation() -> None:
         return
 
     st.subheader(statement["student"]["full_name"])
-    a, b, c, d = st.columns(4)
+    a, b, c, d, e = st.columns(5)
     a.metric("Fondos acumulados", money(statement["summary"]["total_income"]))
     b.metric("Pagos aplicados", money(statement["summary"]["total_applied"]))
     c.metric("Reembolsos", money(statement["summary"]["total_refunds"]))
-    d.metric("Fondos disponibles", money(statement["summary"]["available_funds"]))
+    d.metric("Otros egresos", money(statement["summary"]["total_outflows"]))
+    e.metric("Fondos disponibles", money(statement["summary"]["available_funds"]))
 
     st.subheader("Compromisos")
     commitments = pd.DataFrame(statement["commitments"])
@@ -81,20 +82,24 @@ def login() -> None:
             st.error("No se pudo iniciar sesión. Revise el correo y la contraseña.")
 
 
-def movement_form(students: list[dict], concepts: list[dict]) -> None:
+def movement_form(students: list[dict]) -> None:
     st.subheader("Registrar movimiento")
-    if not students or not concepts:
-        st.warning("Primero deben existir alumnos y conceptos activos.")
+    if not students:
+        st.warning("Primero debe existir al menos un alumno.")
         return
     student_options = {f'{s["full_name"]} · {s["access_code"]}': s["id"] for s in students}
+    student_label = st.selectbox("Alumno", student_options, key="movement_student")
+    concepts = db.list_concepts_for_student(student_options[student_label])
+    if not concepts:
+        st.warning("El alumno no tiene conceptos disponibles.")
+        return
     concept_options = {f'{c["name"]} · {c["category"]}': c for c in concepts}
     with st.form("movement", clear_on_submit=True):
-        student_label = st.selectbox("Alumno", student_options)
         concept_label = st.selectbox("Concepto", concept_options)
         selected_concept = concept_options[concept_label]
         expected_type = {
             "ahorro": "ingreso", "actividad": "ingreso",
-            "compromiso": "aplicacion", "reembolso": "reembolso"
+            "compromiso": "aplicacion", "reembolso": "reembolso", "egreso": "egreso"
         }[selected_concept["category"]]
         st.caption(f"Tipo calculado automáticamente: {expected_type}")
         amount = st.number_input("Monto (S/)", min_value=0.01, step=1.0, format="%.2f")
@@ -114,11 +119,54 @@ def movement_form(students: list[dict], concepts: list[dict]) -> None:
         st.rerun()
 
 
+def student_form() -> None:
+    st.subheader("Registrar alumno")
+    with st.form("student", clear_on_submit=True):
+        code = st.text_input("Código personal")
+        name = st.text_input("Apellidos y nombres")
+        classroom = st.text_input("Aula")
+        submitted = st.form_submit_button("Guardar alumno", type="primary")
+    if submitted:
+        if not code.strip() or not name.strip():
+            st.warning("El código y el nombre son obligatorios.")
+            return
+        db.save_student({
+            "access_code": code.strip(), "full_name": name.strip(),
+            "classroom": classroom.strip() or None, "active": True,
+        })
+        st.success("Alumno guardado.")
+        st.rerun()
+
+
+def void_form(movements: list[dict]) -> None:
+    active = [m for m in movements if m["status"] == "activo"]
+    if not active:
+        return
+    labels = {
+        f'{m["movement_date"]} · {m["student"]} · {m["concept"]} · {money(m["amount"])} · {m["id"][:8]}': m["id"]
+        for m in active
+    }
+    with st.expander("Anular un movimiento"):
+        with st.form("void"):
+            selected = st.selectbox("Movimiento", labels)
+            reason = st.text_input("Motivo de la anulación")
+            submitted = st.form_submit_button("Anular movimiento")
+        if submitted:
+            if not reason.strip():
+                st.warning("Indique el motivo.")
+            else:
+                db.void_movement(labels[selected], reason)
+                st.success("Movimiento anulado; el historial se conservó.")
+                st.rerun()
+
+
 def concept_form() -> None:
     st.subheader("Crear concepto")
     with st.form("concept", clear_on_submit=True):
         name = st.text_input("Nombre", placeholder="Ejemplo: 7ma cuota de fiesta")
-        category = st.selectbox("Categoría", ["ahorro", "actividad", "compromiso", "reembolso"])
+        category = st.selectbox(
+            "Categoría", ["ahorro", "actividad", "compromiso", "reembolso", "egreso"]
+        )
         target = st.number_input("Costo u objetivo (S/)", min_value=0.0, step=1.0, format="%.2f")
         description = st.text_input("Descripción")
         submitted = st.form_submit_button("Crear concepto", type="primary")
@@ -170,24 +218,29 @@ def admin() -> None:
 
     students = db.list_students()
     concepts = db.list_concepts()
-    tab1, tab2, tab3, tab4, tab5 = st.tabs(
-        ["Registrar", "Movimientos", "Conceptos", "Participantes", "Descargar"]
+    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(
+        ["Registrar", "Movimientos", "Alumnos", "Conceptos", "Participantes", "Descargar"]
     )
     with tab1:
-        movement_form(students, concepts)
+        movement_form(students)
     with tab2:
-        movements = pd.DataFrame(db.list_movements())
-        if movements.empty:
+        movement_rows = db.list_movements()
+        movements = pd.DataFrame(movement_rows)
+        if not movement_rows:
             st.info("No hay movimientos registrados.")
         else:
             st.dataframe(movements, hide_index=True, use_container_width=True)
+            void_form(movement_rows)
         st.caption("Las correcciones se harán por anulación; nunca se borrará el historial.")
     with tab3:
+        student_form()
+        st.dataframe(pd.DataFrame(students), hide_index=True, use_container_width=True)
+    with tab4:
         concept_form()
         st.dataframe(pd.DataFrame(db.list_concepts(False)), hide_index=True, use_container_width=True)
-    with tab4:
-        participation_form(students, concepts)
     with tab5:
+        participation_form(students, concepts)
+    with tab6:
         st.download_button(
             "Descargar respaldo completo en Excel", db.export_excel(),
             file_name=f"estado_cuenta_2026_{date.today().isoformat()}.xlsx",

@@ -1,8 +1,8 @@
 create extension if not exists pgcrypto;
 
 create type public.user_role as enum ('admin');
-create type public.concept_category as enum ('ahorro', 'actividad', 'compromiso', 'reembolso');
-create type public.movement_type as enum ('ingreso', 'aplicacion', 'reembolso');
+create type public.concept_category as enum ('ahorro', 'actividad', 'compromiso', 'reembolso', 'egreso');
+create type public.movement_type as enum ('ingreso', 'aplicacion', 'reembolso', 'egreso');
 create type public.movement_status as enum ('activo', 'anulado');
 
 create table public.profiles (
@@ -93,6 +93,7 @@ declare
   v_income numeric := 0;
   v_applied numeric := 0;
   v_refunds numeric := 0;
+  v_outflows numeric := 0;
 begin
   select * into v_student from public.students
   where access_code = trim(p_access_code) and active limit 1;
@@ -101,15 +102,17 @@ begin
   select
     coalesce(sum(amount) filter (where movement_type = 'ingreso'), 0),
     coalesce(sum(amount) filter (where movement_type = 'aplicacion'), 0),
-    coalesce(sum(amount) filter (where movement_type = 'reembolso'), 0)
-  into v_income, v_applied, v_refunds
+    coalesce(sum(amount) filter (where movement_type = 'reembolso'), 0),
+    coalesce(sum(amount) filter (where movement_type = 'egreso'), 0)
+  into v_income, v_applied, v_refunds, v_outflows
   from public.movements where student_id = v_student.id and status = 'activo';
 
   return jsonb_build_object(
     'student', jsonb_build_object('full_name', v_student.full_name, 'classroom', v_student.classroom),
     'summary', jsonb_build_object(
       'total_income', v_income, 'total_applied', v_applied,
-      'total_refunds', v_refunds, 'available_funds', v_income - v_applied - v_refunds
+      'total_refunds', v_refunds, 'total_outflows', v_outflows,
+      'available_funds', v_income - v_applied - v_refunds - v_outflows
     ),
     'commitments', coalesce((
       select jsonb_agg(x order by x.name) from (
