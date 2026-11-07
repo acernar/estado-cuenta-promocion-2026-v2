@@ -113,7 +113,7 @@ def consultation() -> None:
     a.metric("Fondos acumulados", money(statement["summary"]["total_income"]))
     b.metric("Pagos aplicados", money(statement["summary"]["total_applied"]))
     c.metric("Reembolsos", money(statement["summary"]["total_refunds"]))
-    d, e = st.columns(2)
+    d, e, f = st.columns(3)
     total_outflows = float(statement["summary"]["total_outflows"])
     if total_outflows > 0:
         d.markdown(
@@ -124,16 +124,26 @@ def consultation() -> None:
         )
     else:
         d.metric("Otros egresos", money(total_outflows))
+    available_funds = float(statement["summary"]["available_funds"])
+    if available_funds < 0:
+        e.markdown(
+            '<p style="margin:0 0 0.25rem;font-size:0.875rem;">Fondos disponibles</p>'
+            f'<p style="margin:0;color:#d62828;font-size:2.25rem;line-height:1.2;">'
+            f'{money(available_funds)}</p>',
+            unsafe_allow_html=True,
+        )
+    else:
+        e.metric("Fondos disponibles", money(available_funds))
     total_pending = sum(float(item["pending_amount"]) for item in visible_commitments)
     if total_pending > 0:
-        e.markdown(
+        f.markdown(
             '<p style="margin:0 0 0.25rem;font-size:0.875rem;">Saldo pendiente</p>'
             f'<p style="margin:0;color:#d62828;font-size:2.25rem;line-height:1.2;">'
             f'{money(total_pending)}</p>',
             unsafe_allow_html=True,
         )
     else:
-        e.metric("Saldo pendiente", money(total_pending))
+        f.metric("Saldo pendiente", money(total_pending))
 
     st.subheader("Compromisos")
     commitments = pd.DataFrame(visible_commitments)
