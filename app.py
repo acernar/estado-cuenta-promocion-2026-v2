@@ -103,6 +103,10 @@ def consultation() -> None:
     if not statement:
         st.error("Código incorrecto.")
         return
+    visible_commitments = [
+        commitment for commitment in statement["commitments"]
+        if "kit promocional" not in commitment["name"].lower()
+    ]
 
     st.subheader(statement["student"]["full_name"])
     a, b, c = st.columns(3)
@@ -120,19 +124,19 @@ def consultation() -> None:
         )
     else:
         d.metric("Otros egresos", money(total_outflows))
-    available_funds = float(statement["summary"]["available_funds"])
-    if available_funds < 0:
+    total_pending = sum(float(item["pending_amount"]) for item in visible_commitments)
+    if total_pending > 0:
         e.markdown(
-            '<p style="margin:0 0 0.25rem;font-size:0.875rem;">Fondos disponibles</p>'
+            '<p style="margin:0 0 0.25rem;font-size:0.875rem;">Saldo pendiente</p>'
             f'<p style="margin:0;color:#d62828;font-size:2.25rem;line-height:1.2;">'
-            f'{money(available_funds)}</p>',
+            f'{money(total_pending)}</p>',
             unsafe_allow_html=True,
         )
     else:
-        e.metric("Fondos disponibles", money(available_funds))
+        e.metric("Saldo pendiente", money(total_pending))
 
     st.subheader("Compromisos")
-    commitments = pd.DataFrame(statement["commitments"])
+    commitments = pd.DataFrame(visible_commitments)
     if commitments.empty:
         st.info("No hay compromisos registrados.")
     else:
@@ -140,9 +144,6 @@ def consultation() -> None:
             "name": "Concepto", "target_amount": "Costo",
             "paid_amount": "Abonado", "pending_amount": "Pendiente"
         })
-        commitments = commitments[
-            ~commitments["Concepto"].str.contains("Kit promocional", case=False, na=False)
-        ]
         commitments = commitments[["Concepto", "Costo", "Abonado", "Pendiente"]]
         styled_commitments = commitments.style.map(
             lambda value: "color: #d62828; font-weight: 700;" if float(value) > 0 else "",
