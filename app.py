@@ -169,6 +169,16 @@ def consultation() -> None:
         if movements.empty:
             st.info("No hay ahorros ni actividades registrados.")
         else:
+            is_activity = movements["Concepto"].str.contains("actividad", case=False, na=False)
+            movements["_grupo"] = is_activity.map({True: 0, False: 1})
+            movements["_orden_actividad"] = (
+                movements["Concepto"].str.extract(r"^(\d+)", expand=False)
+                .fillna(999).astype(int)
+            )
+            movements = movements.sort_values(
+                ["_grupo", "_orden_actividad", "Concepto"],
+                ascending=[True, True, False],
+            )
             movements = movements[["Concepto", "Monto"]]
             st.dataframe(
                 movements,
