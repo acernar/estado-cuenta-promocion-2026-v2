@@ -133,6 +133,14 @@ def create_concept(data: dict[str, Any]) -> None:
     get_client().table("concepts").insert(data).execute()
 
 
+def concept_exists(name: str, category: str) -> bool:
+    rows = (
+        get_client().table("concepts").select("id")
+        .eq("name", name.strip()).eq("category", category).limit(1).execute().data
+    )
+    return bool(rows)
+
+
 def assigned_student_ids(concept_id: str) -> list[str]:
     rows = (
         get_client().table("student_concepts").select("student_id")

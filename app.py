@@ -322,11 +322,18 @@ def concept_form() -> None:
         if not name.strip():
             st.warning("Ingrese un nombre.")
             return
-        db.create_concept({
-            "name": name.strip(), "category": category,
-            "target_amount": float(Decimal(str(target))),
-            "description": description.strip() or None,
-        })
+        if db.concept_exists(name, category):
+            st.warning("Este concepto ya existe. No es necesario crearlo nuevamente.")
+            return
+        try:
+            db.create_concept({
+                "name": name.strip(), "category": category,
+                "target_amount": float(Decimal(str(target))),
+                "description": description.strip() or None,
+            })
+        except Exception:
+            st.error("No se pudo crear el concepto. Revise si ya existe e inténtelo nuevamente.")
+            return
         st.success("Concepto creado. No fue necesario agregar ninguna columna.")
         st.rerun()
 
