@@ -32,7 +32,7 @@ COMMITMENTS = {
     "AZ": ("Fiesta - 4ta cuota", Decimal("195.00")),
     "BD": ("Anuario", Decimal("370.50")),
     "BF": ("Fiesta - 5ta cuota", Decimal("214.62")),
-    "BG": ("Fiesta - 6ta cuota", Decimal("214.62")),
+    "BG": ("Fiesta - 6ta cuota", Decimal("170.32")),
     "BH": ("Anuario - 2do abono", Decimal("185.00")),
     "BI": ("Graduación", Decimal("300.00")),
 }

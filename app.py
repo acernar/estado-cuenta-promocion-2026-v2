@@ -165,9 +165,9 @@ def consultation() -> None:
     with st.expander("Ver movimientos"):
         movements = pd.DataFrame(statement["movements"])
         if not movements.empty:
-            movements = movements[movements["Tipo"] == "ingreso"]
+            movements = movements[movements["Tipo"].isin(["ingreso", "aplicacion"])]
         if movements.empty:
-            st.info("No hay ahorros ni actividades registrados.")
+            st.info("No hay movimientos registrados.")
         else:
             movements = movements[["Concepto", "Monto"]]
             st.dataframe(
