@@ -143,6 +143,11 @@ def consultation() -> None:
             "name": "Concepto", "target_amount": "Costo",
             "paid_amount": "Abonado", "pending_amount": "Pendiente"
         })
+        additional_kit = (
+            commitments["Concepto"].str.contains("Kit promocional", case=False, na=False)
+            & (commitments["Abonado"].astype(float) > commitments["Costo"].astype(float))
+        )
+        commitments.loc[additional_kit, "Concepto"] += " (solicitó adicionales)"
         commitments = commitments[["Concepto", "Costo", "Abonado", "Pendiente"]]
         styled_commitments = commitments.style.map(
             lambda value: "color: #d62828; font-weight: 700;" if float(value) > 0 else "",
