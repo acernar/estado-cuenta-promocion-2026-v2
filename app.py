@@ -103,10 +103,7 @@ def consultation() -> None:
     if not statement:
         st.error("Código incorrecto.")
         return
-    visible_commitments = [
-        commitment for commitment in statement["commitments"]
-        if "kit promocional" not in commitment["name"].lower()
-    ]
+    visible_commitments = statement["commitments"]
 
     st.subheader(statement["student"]["full_name"])
     a, b, c = st.columns(3)
