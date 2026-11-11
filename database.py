@@ -87,12 +87,14 @@ def list_open_concepts_for_student(student_id: str) -> list[dict[str, Any]]:
         .eq("student_id", student_id).eq("status", "anulado").execute().data
     )
     voided_concept_ids = {row["concept_id"] for row in voided_rows}
+    open_savings = {"ahorro 2026-11", "ahorro 2026-12"}
     available = []
     for concept in list_concepts_for_student(student_id):
         name = concept["name"].strip().lower()
         if (
             concept["category"] in {"ahorro", "actividad"}
             and concept["id"] not in voided_concept_ids
+            and not (concept["category"] == "ahorro" and name in open_savings)
         ):
             continue
         if "casaca" in name:
