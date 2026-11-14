@@ -79,8 +79,8 @@ def list_open_concepts_for_student(student_id: str) -> list[dict[str, Any]]:
     """Conceptos que todavía aceptan nuevos movimientos desde Administración.
 
     Los conceptos históricos se conservan activos para consultas y reportes, pero
-    los ahorros, las casacas y las actividades ya están cerrados. Un ahorro o una
-    actividad vuelve a estar disponible si el alumno tiene un movimiento anulado.
+    los ahorros y las actividades ya están cerrados. Un ahorro o una actividad
+    vuelve a estar disponible si el alumno tiene un movimiento anulado.
     """
     voided_rows = (
         get_client().table("movements").select("concept_id")
@@ -96,8 +96,6 @@ def list_open_concepts_for_student(student_id: str) -> list[dict[str, Any]]:
             and concept["id"] not in voided_concept_ids
             and not (concept["category"] == "ahorro" and name in open_savings)
         ):
-            continue
-        if "casaca" in name:
             continue
         available.append(concept)
     return available
